@@ -22,11 +22,41 @@ io.on("connection", (socket) => {
     io.emit("todo-deleted", { id });
   });
 
-  // naya chatbox event
-  socket.on("send-message", (data) => {
+  socket.on("join-conversation", ({ conversationId } = {}) => {
+    if (
+      typeof conversationId !== "string" ||
+      conversationId.length === 0 ||
+      conversationId.length > 128
+    ) {
+      socket.emit("chat-error", { message: "Invalid conversation ID." });
+      return;
+    }
+
+    socket.join(conversationId);
+  });
+
+  socket.on("send-message", (data = {}) => {
+    const { message, recipientId, conversationId } = data;
+    if (
+      typeof message !== "string" ||
+      !message.trim() ||
+      typeof conversationId !== "string" ||
+      conversationId.length === 0 ||
+      conversationId.length > 128 ||
+      typeof recipientId !== "string" ||
+      !recipientId.trim()
+    ) {
+      socket.emit("chat-error", { message: "Invalid chat message or recipient." });
+      return;
+    }
+
     console.log("User:", data.message);
-    // abhi sirf test reply, baad mein yahan AI/asli jawab lagayen
-    socket.emit("receive-message", { message: `Aap ne kaha: ${data.message}` });
+    socket.join(conversationId);
+    io.to(conversationId).emit("receive-message", {
+      message: message.trim(),
+      recipientId,
+      conversationId,
+    });
   });
 });
 
